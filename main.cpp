@@ -3,7 +3,7 @@
 #include <QApplication>
 #include <QLocale>
 #include <QTranslator>
-
+#include "VideoShow.h"
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    MainWindow w;
+    VideoShow w;
     w.show();
     return a.exec();
 }

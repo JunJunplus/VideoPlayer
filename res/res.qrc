@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>shader/screen.vert</file>
+        <file>shader/screen.frag</file>
+    </qresource>
+</RCC>

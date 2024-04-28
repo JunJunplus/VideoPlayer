@@ -93,8 +93,8 @@ void VideoDecoder::openVideo(const QString &path)
     m_swsContext = sws_getContext(m_codecContext->width,
                                              m_codecContext->height,
                                              m_codecContext->pix_fmt,
-                                             m_codecContext->width,
-                                             m_codecContext->height,
+                                             800,
+                                             600,
                                              AV_PIX_FMT_YUV420P,
                                              SWS_BICUBIC, NULL,NULL,NULL);
 
@@ -113,7 +113,7 @@ void VideoDecoder::openVideo(const QString &path)
 QImage VideoDecoder::Decode()
 {
     static int count = 0;
-    QImage image(QSize(m_codecContext->width, m_codecContext->height), QImage::Format_RGB888);
+    QImage image(QSize(800, 600), QImage::Format_RGB888);
     if(!m_frameQue.isEmpty())
     {
         m_mutex->lock();
@@ -122,9 +122,9 @@ QImage VideoDecoder::Decode()
 
         // 创建
         if (frame) {
-            for(int h = 0; h < m_codecContext->height; h++)
+            for(int h = 0; h < 600; h++)
             {
-                for(int w = 0; w < m_codecContext->width; w ++)
+                for(int w = 0; w < 800; w ++)
                 {
                     int hh = h >> 1;
                     int ww = w >> 1;
@@ -163,7 +163,6 @@ QImage VideoDecoder::Decode()
 
 void VideoDecoder::doWork()
 {
-
     static int count = 0;
     while (count < 2000) {
         if (av_read_frame(m_formatContext, m_packet) >= 0) {

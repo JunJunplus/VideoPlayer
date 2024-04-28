@@ -11,10 +11,10 @@ MainWindow::MainWindow(QWidget *parent)
     m_video = new VideoDecoder();
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &MainWindow::onPlay);
-    m_video->openVideo("E:\\testvideo\\animal.3gp");
+    m_video->openVideo("D:\\4k.mp4");
     m_timer->setInterval(40);
     m_timer->start();
-    ui->label->setFixedSize(1280, 720);
+    ui->label->setFixedSize(800, 600);
 }
 
 MainWindow::~MainWindow()

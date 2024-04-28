@@ -8,7 +8,7 @@ set(CMAKE_AUTORCC ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(FFMPEG_PATH "F:\\openCode\\ffmpeg-6.0-full_build-shared")
+set(FFMPEG_PATH "D:\\open\\ffmpeg-6.0-full_build-shared")
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools)
 
@@ -18,8 +18,6 @@ set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
         mainwindow.h
-        mainwindow.ui
-        ${TS_FILES}
 )
 
 include_directories(
@@ -50,6 +48,10 @@ else()
         add_executable(VideoPlayer
             ${PROJECT_SOURCES}
             VideoDecoder.h VideoDecoder.cpp
+            mainwindow.ui
+            VideoShow.h VideoShow.cpp
+            res/res.qrc
+
         )
     endif()
 
@@ -60,6 +62,8 @@ target_link_libraries(
     VideoPlayer
     PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::Gui
+    #opengl
     avutil
     avcodec
     avformat
