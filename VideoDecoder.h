@@ -25,7 +25,8 @@ public:
     VideoDecoder(QObject *parent = nullptr);
     void openVideo(const QString& path);
     QImage Decode();
-
+    AVFrame* PopFrame();
+    void SetSize(int w, int h);
 private:
     void doWork();
 private:

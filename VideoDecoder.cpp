@@ -161,6 +161,25 @@ QImage VideoDecoder::Decode()
     return QImage();
 }
 
+AVFrame *VideoDecoder::PopFrame()
+{
+    if (!m_frameQue.isEmpty()) {
+        return m_frameQue.dequeue();
+    }
+    return nullptr;
+}
+
+void VideoDecoder::SetSize(int w, int h)
+{
+    m_swsContext = sws_getContext(m_codecContext->width,
+                                  m_codecContext->height,
+                                  m_codecContext->pix_fmt,
+                                  w,
+                                  h,
+                                  AV_PIX_FMT_YUV420P,
+                                  SWS_BICUBIC, NULL,NULL,NULL);
+}
+
 void VideoDecoder::doWork()
 {
     static int count = 0;
@@ -182,6 +201,4 @@ void VideoDecoder::doWork()
             }
         }
     }
-
-
 }
