@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QImage>
 #include <thread>
+#include <cmath>
 
 VideoDecoder::VideoDecoder(QObject *parent)
     : QObject{parent}
@@ -193,43 +194,68 @@ qint64 VideoDecoder::GetTotalTime()
     return m_total;
 }
 
-qint64 VideoDecoder::GetCurStamp()
+qint64 VideoDecoder::GetCurStamp(AVFrame* frame)
 {
+
     AVRational ration {1, AV_TIME_BASE};
-    return av_rescale_q(m_packet->dts, m_stream->time_base, ration);
+    int64_t dts = frame->pkt_dts;
+    int64_t pts = frame->pts;
+
+    double dts_in_seconds = dts * av_q2d(m_stream->time_base);
+    double pts_in_seconds = pts * av_q2d(m_stream->time_base);
+    qDebug() << "CurStamp: " << dts_in_seconds << "--" << pts_in_seconds;
+    //floor(pts_in_seconds);
+    return (qint64)floor(pts_in_seconds);;
 }
 
 void VideoDecoder::Seek(qint64 time)
 {
-    //假设我们要将播放位置设定为第10秒
+    qDebug() << "Seek : " << time;
     int64_t target_pts = time * AV_TIME_BASE;
     AVRational rat{1, AV_TIME_BASE};
     int64_t target_timestamp = av_rescale_q(target_pts, rat, m_stream->time_base);
-    std::unique_lock<std::mutex> lock(*m_mutex);
+    std::unique_lock<std::mutex> lock(m_seekMutex);
+    m_isSeek = true;
     av_seek_frame(m_formatContext, m_streamIndex, target_timestamp, AVSEEK_FLAG_BACKWARD);
     avcodec_flush_buffers(m_codecContext);
+    for (auto i : m_frameQue) {
+        av_frame_unref(i);
+    }
+    m_frameQue.clear();
+    m_condition.notify_one();
 }
 
 void VideoDecoder::doWork()
 {
     while (true) {
-        while (av_read_frame(m_formatContext, m_packet) >= 0) {
+        std::unique_lock<std::mutex> lock(m_seekMutex);
+        int ret = av_read_frame(m_formatContext, m_packet);
+        if (ret >= 0) {
             if (m_stream && m_packet->stream_index == m_streamIndex) {
+
                 if (avcodec_send_packet(m_codecContext, m_packet) == 0)
                 {
                     if (avcodec_receive_frame(m_codecContext, m_frame) == 0) {
+                        // if (!m_frame->key_frame && m_isSeek) {
+                        //     continue;
+                        // }
                         m_swsFrame = av_frame_alloc();
                         sws_scale_frame(m_swsContext, m_swsFrame, m_frame);
-
+                        m_swsFrame->pkt_dts = m_packet->dts;
+                        m_swsFrame->pts = m_packet->pts;
                         std::unique_lock<std::mutex> lock(*m_mutex);
-                        m_condition.wait(lock, [this]() { return m_frameQue.size() < 40; });
+                        //m_condition.wait(lock, [this]() { return m_frameQue.size() < 100; });
+
                         m_frameQue.enqueue(m_swsFrame);
+                        m_isSeek = false;
+
                     }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(30));
                 }
             }
+        } else {
+            std::unique_lock<std::mutex> lock(*m_mutex);
+            m_condition.wait(lock);
         }
-
-        std::unique_lock<std::mutex> lock(*m_mutex);
-        m_condition.wait(lock);
     }
 }

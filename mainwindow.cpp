@@ -48,12 +48,13 @@ void MainWindow::onPlay()
     //     //m_timer->stop();
     //     qDebug() << "end";
     // }
-    static int value = 0;
+
     AVFrame* frame = m_video->PopFrame();
 
     if (frame) {
         qDebug() << "pop";
-        m_slider->Setcurrent(m_video->GetCurStamp());
+        m_slider->Setcurrent(m_video->GetCurStamp(frame));
         m_videoShow->UpdataTexture(frame);
+        av_frame_unref(frame);
     }
 }

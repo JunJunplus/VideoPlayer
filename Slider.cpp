@@ -52,7 +52,9 @@ QSlider::sub-page:horizontal{
     m_layout->addWidget(m_right);
     m_layout->setEnabled(true);
 
-    connect(m_slider, &QSlider::sliderMoved, this, &Slider::seek);
+    connect(m_slider, &QSlider::sliderReleased, this, &Slider::seek);
+    connect(m_slider, &QSlider::sliderReleased, this, [this](){ m_drag = true; });
+    connect(m_slider, &QSlider::sliderPressed, this, [this](){ m_drag = false; });
 }
 
 void Slider::SetTotal(qint64 timestamp)
@@ -64,8 +66,10 @@ void Slider::SetTotal(qint64 timestamp)
 void Slider::Setcurrent(qint64 timestamp)
 {
     m_current = timestamp;
-    m_left->setText(GetDuration(m_current));
-    SetSliderValue((double)m_current / (double)m_total * 1000);
+    if (m_drag) {
+        m_left->setText(GetDuration(m_current));
+        SetSliderValue((double)m_current / (double)m_total * 1000);
+    }
 }
 
 void Slider::SetSliderValue(int value)
@@ -73,8 +77,9 @@ void Slider::SetSliderValue(int value)
     m_slider->setValue(value);
 }
 
-void Slider::seek(int value)
+void Slider::seek()
 {
+    int value = m_slider->value();
     qDebug() << "value: " << value;
     m_current = ((double)value / 1000.0) * m_total;
     m_left->setText(GetDuration(m_current));

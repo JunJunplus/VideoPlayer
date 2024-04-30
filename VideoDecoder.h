@@ -29,11 +29,12 @@ public:
     AVFrame* PopFrame();
     void SetSize(int w, int h);
     qint64 GetTotalTime();
-    qint64 GetCurStamp();
+    qint64 GetCurStamp(AVFrame* frame);
 public slots:
     void Seek(qint64 time);
 private:
     void doWork();
+    void SaveCurPack();
 private:
     AVFormatContext* m_formatContext = nullptr;
     AVCodecContext* m_codecContext = nullptr;
@@ -44,6 +45,8 @@ private:
     AVPacket* m_packet = nullptr;
     AVFrame* m_frame = nullptr;
     AVFrame* m_swsFrame = nullptr;
+    AVPacket* m_curPacket = nullptr;
+    AVFrame* m_curFrame = nullptr;
     uint8_t* m_outBuffer;
 
     QString m_videoPath;
@@ -52,10 +55,12 @@ private:
 
     std::thread* m_thread;
     std::mutex* m_mutex;
+    std::mutex m_seekMutex;
     std::condition_variable m_condition;
     std::unique_lock<std::mutex> m_lock;
-    bool m_isEnd;
+    bool m_isEnd = false;
     qint64 m_total = 0;
+    bool m_isSeek = false;
 };
 
 #endif // VIDEODECODER_H

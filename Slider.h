@@ -17,7 +17,7 @@ public:
 signals:
     void onSeekStamp(qint64 stamp);
 private slots:
-    void seek(int value);
+    void seek();
 
 private:
     QString GetDuration(qint64 timestamp);
@@ -28,6 +28,7 @@ private:
     QHBoxLayout* m_layout;
     int64_t m_total = 97823;
     int64_t m_current = 0;
+    bool m_drag = true;
 };
 
 #endif // SLIDER_H
