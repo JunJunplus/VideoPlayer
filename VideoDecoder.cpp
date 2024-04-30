@@ -8,7 +8,7 @@ VideoDecoder::VideoDecoder(QObject *parent)
 {
          //operate信号发射后启动线程工作
     m_mutex = new std::mutex;
-
+    m_lock;
 }
 
 void VideoDecoder::openVideo(const QString &path)
@@ -93,8 +93,8 @@ void VideoDecoder::openVideo(const QString &path)
     m_swsContext = sws_getContext(m_codecContext->width,
                                              m_codecContext->height,
                                              m_codecContext->pix_fmt,
-                                             800,
-                                             600,
+                                             m_codecContext->width,
+                                             m_codecContext->height,
                                              AV_PIX_FMT_YUV420P,
                                              SWS_BICUBIC, NULL,NULL,NULL);
 
@@ -106,8 +106,12 @@ void VideoDecoder::openVideo(const QString &path)
 
     qDebug()<<"视频详细信息输出";
     //此函数自动打印输入或输出的详细信息
-    //av_dump_format(m_formatContext, 0, path.toStdString().c_str(), 0);
+    av_dump_format(m_formatContext, 0, nullptr, 0);
+    //fflush(stderr);
+    qDebug() << "start: " << m_formatContext->duration / AV_TIME_BASE << "." << m_formatContext->duration % AV_TIME_BASE;
+    m_total = m_formatContext->duration / AV_TIME_BASE;
     m_thread = new std::thread(&VideoDecoder::doWork, this);
+    m_isEnd = false;
 }
 
 QImage VideoDecoder::Decode()
@@ -163,8 +167,12 @@ QImage VideoDecoder::Decode()
 
 AVFrame *VideoDecoder::PopFrame()
 {
+    std::unique_lock<std::mutex> lock(*m_mutex);
     if (!m_frameQue.isEmpty()) {
         return m_frameQue.dequeue();
+    } else {
+        m_condition.notify_one();
+        return nullptr;
     }
     return nullptr;
 }
@@ -180,25 +188,48 @@ void VideoDecoder::SetSize(int w, int h)
                                   SWS_BICUBIC, NULL,NULL,NULL);
 }
 
+qint64 VideoDecoder::GetTotalTime()
+{
+    return m_total;
+}
+
+qint64 VideoDecoder::GetCurStamp()
+{
+    AVRational ration {1, AV_TIME_BASE};
+    return av_rescale_q(m_packet->dts, m_stream->time_base, ration);
+}
+
+void VideoDecoder::Seek(qint64 time)
+{
+    //假设我们要将播放位置设定为第10秒
+    int64_t target_pts = time * AV_TIME_BASE;
+    AVRational rat{1, AV_TIME_BASE};
+    int64_t target_timestamp = av_rescale_q(target_pts, rat, m_stream->time_base);
+    std::unique_lock<std::mutex> lock(*m_mutex);
+    av_seek_frame(m_formatContext, m_streamIndex, target_timestamp, AVSEEK_FLAG_BACKWARD);
+    avcodec_flush_buffers(m_codecContext);
+}
+
 void VideoDecoder::doWork()
 {
-    static int count = 0;
-    while (count < 2000) {
-        if (av_read_frame(m_formatContext, m_packet) >= 0) {
+    while (true) {
+        while (av_read_frame(m_formatContext, m_packet) >= 0) {
             if (m_stream && m_packet->stream_index == m_streamIndex) {
                 if (avcodec_send_packet(m_codecContext, m_packet) == 0)
                 {
                     if (avcodec_receive_frame(m_codecContext, m_frame) == 0) {
                         m_swsFrame = av_frame_alloc();
                         sws_scale_frame(m_swsContext, m_swsFrame, m_frame);
-                        count++;
-                        qDebug() << "enqueue: " << count;
-                        m_mutex->lock();
+
+                        std::unique_lock<std::mutex> lock(*m_mutex);
+                        m_condition.wait(lock, [this]() { return m_frameQue.size() < 40; });
                         m_frameQue.enqueue(m_swsFrame);
-                        m_mutex->unlock();
                     }
                 }
             }
         }
+
+        std::unique_lock<std::mutex> lock(*m_mutex);
+        m_condition.wait(lock);
     }
 }

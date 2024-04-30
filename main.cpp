@@ -3,6 +3,7 @@
 #include <QApplication>
 #include <QLocale>
 #include <QTranslator>
+#include "Slider.h"
 #include "VideoShow.h"
 int main(int argc, char *argv[])
 {

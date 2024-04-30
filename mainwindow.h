@@ -2,10 +2,14 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "VideoDecoder.h"
-#include "VideoShow.h"
 #include <QTimer>
 #include <QResizeEvent>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+
+#include "Slider.h"
+#include "VideoDecoder.h"
+#include "VideoShow.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -28,6 +32,9 @@ private:
     QTimer* m_timer;
     VideoDecoder* m_video;
     VideoShow* m_videoShow;
-    Ui::MainWindow *ui;
+    Slider* m_slider;
+    QVBoxLayout* m_vLayout;
+    QHBoxLayout* m_hLayoyt;
+    Ui::MainWindow *ui;    
 };
 #endif // MAINWINDOW_H

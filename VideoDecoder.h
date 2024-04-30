@@ -7,6 +7,7 @@
 #include <QThread>
 #include <QQueue>
 #include <mutex>
+#include <condition_variable>
 
 extern "C" {
 #include "libavutil/avutil.h"
@@ -27,6 +28,10 @@ public:
     QImage Decode();
     AVFrame* PopFrame();
     void SetSize(int w, int h);
+    qint64 GetTotalTime();
+    qint64 GetCurStamp();
+public slots:
+    void Seek(qint64 time);
 private:
     void doWork();
 private:
@@ -47,6 +52,10 @@ private:
 
     std::thread* m_thread;
     std::mutex* m_mutex;
+    std::condition_variable m_condition;
+    std::unique_lock<std::mutex> m_lock;
+    bool m_isEnd;
+    qint64 m_total = 0;
 };
 
 #endif // VIDEODECODER_H

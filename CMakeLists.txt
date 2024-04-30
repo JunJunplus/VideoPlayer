@@ -51,6 +51,7 @@ else()
             mainwindow.ui
             VideoShow.h VideoShow.cpp
             res/res.qrc
+            Slider.h Slider.cpp
 
         )
     endif()
