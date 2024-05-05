@@ -11,11 +11,11 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_video = new VideoDecoder();
     m_videoShow = new VideoShow(this);
-    m_videoShow->setGeometry(0, 0, 800, 600);
+    //m_videoShow->setGeometry(0, 0, 800, 600);
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &MainWindow::onPlay);
     m_video->openVideo("D:\\testvideo\\4.mp4");
-    m_timer->setInterval(40);
+    m_timer->setInterval(33);
     m_timer->start();
 
     m_slider = new Slider(this);

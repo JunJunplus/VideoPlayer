@@ -180,13 +180,13 @@ AVFrame *VideoDecoder::PopFrame()
 
 void VideoDecoder::SetSize(int w, int h)
 {
-    m_swsContext = sws_getContext(m_codecContext->width,
-                                  m_codecContext->height,
-                                  m_codecContext->pix_fmt,
-                                  w,
-                                  h,
-                                  AV_PIX_FMT_YUV420P,
-                                  SWS_BICUBIC, NULL,NULL,NULL);
+    // m_swsContext = sws_getContext(m_codecContext->width,
+    //                               m_codecContext->height,
+    //                               m_codecContext->pix_fmt,
+    //                               w,
+    //                               h,
+    //                               AV_PIX_FMT_YUV420P,
+    //                               SWS_BICUBIC, NULL,NULL,NULL);
 }
 
 qint64 VideoDecoder::GetTotalTime()
@@ -205,7 +205,7 @@ qint64 VideoDecoder::GetCurStamp(AVFrame* frame)
     double pts_in_seconds = pts * av_q2d(m_stream->time_base);
     qDebug() << "CurStamp: " << dts_in_seconds << "--" << pts_in_seconds;
     //floor(pts_in_seconds);
-    return (qint64)floor(pts_in_seconds);;
+    return (qint64)floor(dts_in_seconds);;
 }
 
 void VideoDecoder::Seek(qint64 time)

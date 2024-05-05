@@ -16,8 +16,8 @@ void main()
     yuv.b = texture2D(Vtexture, TexCoords).r;
     yuv -= vec3(16. / 255., 128. / 255., 128. / 255.);
     rgb = mat3( 1,       1,         1,
-                0,       -0.3455,   1.779,
-                1.4075,  -0.7169,   0) * yuv;
+                0,       -0.1873,   1.8556,
+                1.5748,  -0.4681,   0) * yuv;
 
     //vec3 col = texture(texture, TexCoords).rgb;
     FragColor = vec4(rgb, 1.0);

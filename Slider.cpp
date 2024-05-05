@@ -68,6 +68,7 @@ void Slider::Setcurrent(qint64 timestamp)
     m_current = timestamp;
     if (m_drag) {
         m_left->setText(GetDuration(m_current));
+        m_right->setText(GetDuration(m_total - m_current));
         SetSliderValue((double)m_current / (double)m_total * 1000);
     }
 }
