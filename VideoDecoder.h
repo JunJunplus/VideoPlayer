@@ -30,6 +30,8 @@ public:
     void SetSize(int w, int h);
     qint64 GetTotalTime();
     qint64 GetCurStamp(AVFrame* frame);
+    void InitHWDecoder(const AVCodec* codec);
+    bool FrameDataCopy();
 public slots:
     void Seek(qint64 time);
 private:
@@ -44,10 +46,13 @@ private:
 
     AVPacket* m_packet = nullptr;
     AVFrame* m_frame = nullptr;
+    AVFrame* m_frameHW = nullptr;
     AVFrame* m_swsFrame = nullptr;
     AVPacket* m_curPacket = nullptr;
     AVFrame* m_curFrame = nullptr;
     uint8_t* m_outBuffer;
+    QList<int> m_HWDeviceTypes;
+    AVBufferRef* hw_device_ctx = nullptr;         // 对数据缓冲区的引用
 
     QString m_videoPath;
     int m_streamIndex = -1;

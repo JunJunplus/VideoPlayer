@@ -26,7 +26,7 @@ private:
     QSlider* m_slider;
     QLabel* m_right;
     QHBoxLayout* m_layout;
-    int64_t m_total = 97823;
+    int64_t m_total = 0;
     int64_t m_current = 0;
     bool m_drag = true;
 };

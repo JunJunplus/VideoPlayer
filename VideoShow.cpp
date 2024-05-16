@@ -24,21 +24,21 @@ void VideoShow::initializeGL()
     m_shaderProgram->link();
     //m_shaderProgram->bind();
     m_Ytexture = new QOpenGLTexture(QOpenGLTexture::Target::Target2D);
-    m_Ytexture->setFormat(QOpenGLTexture::LuminanceFormat);
-    m_Ytexture->setMinificationFilter(QOpenGLTexture::Nearest);
-    m_Ytexture->setMagnificationFilter(QOpenGLTexture::Nearest);
+    m_Ytexture->setFormat(QOpenGLTexture::R8_UNorm);
+    //m_Ytexture->setMinificationFilter(QOpenGLTexture::Nearest);
+    m_Ytexture->setMinMagFilters(QOpenGLTexture::LinearMipMapLinear,QOpenGLTexture::Linear);
     m_Ytexture->setWrapMode(QOpenGLTexture::ClampToEdge);
 
     m_Utexture = new QOpenGLTexture(QOpenGLTexture::Target::Target2D);
-    m_Utexture->setFormat(QOpenGLTexture::LuminanceFormat);
-    m_Utexture->setMinificationFilter(QOpenGLTexture::Nearest);
-    m_Utexture->setMagnificationFilter(QOpenGLTexture::Nearest);
+    m_Utexture->setFormat(QOpenGLTexture::R8_UNorm);
+    //m_Utexture->setMinificationFilter(QOpenGLTexture::Nearest);
+    m_Utexture->setMinMagFilters(QOpenGLTexture::LinearMipMapLinear,QOpenGLTexture::Linear);
     m_Utexture->setWrapMode(QOpenGLTexture::ClampToEdge);
 
     m_Vtexture = new QOpenGLTexture(QOpenGLTexture::Target::Target2D);
-    m_Vtexture->setFormat(QOpenGLTexture::LuminanceFormat);
-    m_Vtexture->setMinificationFilter(QOpenGLTexture::Nearest);
-    m_Vtexture->setMagnificationFilter(QOpenGLTexture::Nearest);
+    m_Vtexture->setFormat(QOpenGLTexture::R8_UNorm);
+    //m_Vtexture->setMinificationFilter(QOpenGLTexture::Nearest);
+    m_Vtexture->setMinMagFilters(QOpenGLTexture::LinearMipMapLinear,QOpenGLTexture::Linear);
     m_Vtexture->setWrapMode(QOpenGLTexture::ClampToEdge);
 
     float quadVertices[] = {

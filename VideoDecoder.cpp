@@ -3,6 +3,30 @@
 #include <QImage>
 #include <thread>
 #include <cmath>
+/*********************************** FFmpeg获取GPU硬件解码帧格式的回调函数 *****************************************/
+static enum AVPixelFormat g_pixelFormat;
+/**
+ * @brief      回调函数，获取GPU硬件解码帧的格式
+ * @param s
+ * @param fmt
+ * @return
+ */
+AVPixelFormat get_hw_format(AVCodecContext* s, const enum AVPixelFormat* fmt)
+{
+    Q_UNUSED(s)
+    const enum AVPixelFormat* p;
+
+    for (p = fmt; *p != -1; p++)
+    {
+        if(*p == g_pixelFormat)
+        {
+            return *p;
+        }
+    }
+
+    qDebug() << "无法获取硬件表面格式.";         // 当同时打开太多路视频时，如果超过了GPU的能力，可能会返回找不到解码帧格式
+    return AV_PIX_FMT_NONE;
+}
 
 VideoDecoder::VideoDecoder(QObject *parent)
     : QObject{parent}
@@ -10,6 +34,19 @@ VideoDecoder::VideoDecoder(QObject *parent)
          //operate信号发射后启动线程工作
     m_mutex = new std::mutex;
     m_lock;
+
+    AVHWDeviceType type = AV_HWDEVICE_TYPE_NONE;      // ffmpeg支持的硬件解码器
+    QStringList strTypes;
+    while ((type = av_hwdevice_iterate_types(type)) != AV_HWDEVICE_TYPE_NONE)       // 遍历支持的设备类型。
+    {
+        m_HWDeviceTypes.append(type);
+        const char* ctype = av_hwdevice_get_type_name(type);  // 获取AVHWDeviceType的字符串名称。
+        if(ctype)
+        {
+            strTypes.append(QString(ctype));
+        }
+    }
+    qDebug() << "支持的硬解码器： " << strTypes;
 }
 
 void VideoDecoder::openVideo(const QString &path)
@@ -68,9 +105,12 @@ void VideoDecoder::openVideo(const QString &path)
     } else {
         qDebug() << "avcodec_parameters_to_context successed";
     }
+    m_codecContext->flags2 |= AV_CODEC_FLAG2_FAST;    // 允许不符合规范的加速技巧。
+    m_codecContext->thread_count = 8;                 // 使用8线程解码
 
+    InitHWDecoder(m_codec);
     //5 打开解码器
-    if (avcodec_open2(m_codecContext, m_codec, nullptr) != 0) {
+    if (avcodec_open2(m_codecContext, nullptr, nullptr) != 0) {
         qDebug() << "avcodec_open2 failed";
     } else {
         qDebug() << "avcodec_open2 successed";
@@ -93,7 +133,7 @@ void VideoDecoder::openVideo(const QString &path)
     //参数八：字节对齐类型(C/C++里面)->提高读取效率
     m_swsContext = sws_getContext(m_codecContext->width,
                                              m_codecContext->height,
-                                             m_codecContext->pix_fmt,
+                                             AV_PIX_FMT_NV12,
                                              m_codecContext->width,
                                              m_codecContext->height,
                                              AV_PIX_FMT_YUV420P,
@@ -104,7 +144,7 @@ void VideoDecoder::openVideo(const QString &path)
     m_packet = av_packet_alloc();
     //av_new_packet(m_packet, m_codecContext->width * m_codecContext->height);
     m_frame = av_frame_alloc();
-
+    m_frameHW = av_frame_alloc();
     qDebug()<<"视频详细信息输出";
     //此函数自动打印输入或输出的详细信息
     av_dump_format(m_formatContext, 0, nullptr, 0);
@@ -208,6 +248,73 @@ qint64 VideoDecoder::GetCurStamp(AVFrame* frame)
     return (qint64)floor(dts_in_seconds);;
 }
 
+void VideoDecoder::InitHWDecoder(const AVCodec *codec)
+{
+    if(!codec) return;
+
+    for(int i = 0; ; i++)
+    {
+        const AVCodecHWConfig* config = avcodec_get_hw_config(codec, i);    // 检索编解码器支持的硬件配置。
+        if(!config)
+        {
+            qDebug() << "打开硬件解码器失败！";
+            return;          // 没有找到支持的硬件配置
+        }
+
+        if (config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX)       // 判断是否是设备类型
+        {
+            for(auto i : m_HWDeviceTypes)
+            {
+                if(config->device_type == AVHWDeviceType(i))                 // 判断设备类型是否是支持的硬件解码器
+                {
+                    g_pixelFormat = config->pix_fmt;
+
+                    // 打开指定类型的设备，并为其创建AVHWDeviceContext。
+                    int ret = av_hwdevice_ctx_create(&hw_device_ctx, config->device_type, nullptr, nullptr, 0);
+                    if(ret < 0)
+                    {
+                        av_buffer_unref(&hw_device_ctx);
+                        return ;
+                    }
+                    qDebug() << "打开硬件解码器：" << av_hwdevice_get_type_name(config->device_type);
+                    m_codecContext->hw_device_ctx = av_buffer_ref(hw_device_ctx);  // 创建一个对AVBuffer的新引用。
+                    m_codecContext->get_format = get_hw_format;                    // 由一些解码器调用，以选择将用于输出帧的像素格式
+
+                    return;
+                }
+            }
+        }
+    }
+}
+
+bool VideoDecoder::FrameDataCopy()
+{
+    if(m_frame->format != g_pixelFormat)
+    {
+
+        return false;
+    }
+#if 1   // av_hwframe_map在ffmpeg3.3以后才有，经过测试av_hwframe_transfer_data的耗时大概是av_hwframe_map的【1.5倍】
+    int ret = av_hwframe_map(m_frameHW, m_frame, 0);                   // 映射硬件数据帧
+    if(ret < 0)
+    {
+
+        return false;
+    }
+    m_frameHW->width = m_frame->width;
+    m_frameHW->height = m_frame->height;
+#else
+    int ret = av_hwframe_transfer_data(m_frameHW, m_frame, 0);       // 将解码后的数据从GPU复制到CPU(m_frameHW) 这一步比较耗时，在这一步之前硬解码速度比软解码快很多
+    if(ret < 0)
+    {
+        showError(ret);
+        av_frame_unref(m_frame);
+        return false;
+    }
+    av_frame_copy_props(m_frameHW, m_frame);                        // 仅将“metadata”字段从src复制到dst。
+#endif
+    return true;
+}
 void VideoDecoder::Seek(qint64 time)
 {
     qDebug() << "Seek : " << time;
@@ -239,18 +346,36 @@ void VideoDecoder::doWork()
                         // if (!m_frame->key_frame && m_isSeek) {
                         //     continue;
                         // }
+                        av_frame_unref(m_frameHW);
+                         std::unique_lock<std::mutex> lock(*m_mutex);
+                        if(!m_frame->data[0])               // 如果是硬件解码就进入
+                        {
+                            FrameDataCopy();
+                        }
+
                         m_swsFrame = av_frame_alloc();
-                        sws_scale_frame(m_swsContext, m_swsFrame, m_frame);
+                        static bool isSw = true;
+                        if (isSw)
+
+                        m_swsContext = sws_getContext(m_frameHW->width,
+                                                      m_frameHW->height,
+                                                      AV_PIX_FMT_NV12,
+                                                      m_frameHW->width,
+                                                      m_frameHW->width,
+                                                      AV_PIX_FMT_YUV420P,
+                                                      SWS_BILINEAR, NULL,NULL,NULL);
+                        isSw = false;
+                        sws_scale_frame(m_swsContext, m_swsFrame, m_frameHW);
                         m_swsFrame->pkt_dts = m_packet->dts;
                         m_swsFrame->pts = m_packet->pts;
-                        std::unique_lock<std::mutex> lock(*m_mutex);
+
                         //m_condition.wait(lock, [this]() { return m_frameQue.size() < 100; });
 
                         m_frameQue.enqueue(m_swsFrame);
                         m_isSeek = false;
 
                     }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+                    //std::this_thread::sleep_for(std::chrono::milliseconds(30));
                 }
             }
         } else {
