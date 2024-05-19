@@ -153,6 +153,8 @@ void VideoDecoder::openVideo(const QString &path)
     m_total = m_formatContext->duration / AV_TIME_BASE;
     m_thread = new std::thread(&VideoDecoder::doWork, this);
     m_isEnd = false;
+    AVRational frameRate = m_stream->avg_frame_rate;
+    m_fps = av_q2d(frameRate);
 }
 
 QImage VideoDecoder::Decode()
@@ -243,7 +245,7 @@ qint64 VideoDecoder::GetCurStamp(AVFrame* frame)
 
     double dts_in_seconds = dts * av_q2d(m_stream->time_base);
     double pts_in_seconds = pts * av_q2d(m_stream->time_base);
-    qDebug() << "CurStamp: " << dts_in_seconds << "--" << pts_in_seconds;
+
     //floor(pts_in_seconds);
     return (qint64)floor(dts_in_seconds);;
 }
@@ -315,27 +317,41 @@ bool VideoDecoder::FrameDataCopy()
 #endif
     return true;
 }
+
+double VideoDecoder::GetFps()
+{
+    return m_fps;
+}
 void VideoDecoder::Seek(qint64 time)
 {
     qDebug() << "Seek : " << time;
+
     int64_t target_pts = time * AV_TIME_BASE;
     AVRational rat{1, AV_TIME_BASE};
     int64_t target_timestamp = av_rescale_q(target_pts, rat, m_stream->time_base);
+    {
     std::unique_lock<std::mutex> lock(m_seekMutex);
     m_isSeek = true;
-    av_seek_frame(m_formatContext, m_streamIndex, target_timestamp, AVSEEK_FLAG_BACKWARD);
     avcodec_flush_buffers(m_codecContext);
+    av_seek_frame(m_formatContext, m_streamIndex, target_timestamp, AVSEEK_FLAG_BACKWARD);
+
     for (auto i : m_frameQue) {
         av_frame_unref(i);
     }
     m_frameQue.clear();
-    m_condition.notify_one();
+
+    m_isSeek = false;
+    }
+    m_condition.notify_all();
 }
 
 void VideoDecoder::doWork()
 {
     while (true) {
-        std::unique_lock<std::mutex> lock(m_seekMutex);
+        std::unique_lock<std::mutex> lockSeek(m_seekMutex);
+
+        m_condition.wait(lockSeek, [this](){ return !m_isSeek;});
+
         int ret = av_read_frame(m_formatContext, m_packet);
         if (ret >= 0) {
             if (m_stream && m_packet->stream_index == m_streamIndex) {
@@ -346,8 +362,9 @@ void VideoDecoder::doWork()
                         // if (!m_frame->key_frame && m_isSeek) {
                         //     continue;
                         // }
+
                         av_frame_unref(m_frameHW);
-                         std::unique_lock<std::mutex> lock(*m_mutex);
+
                         if(!m_frame->data[0])               // 如果是硬件解码就进入
                         {
                             FrameDataCopy();
@@ -368,14 +385,12 @@ void VideoDecoder::doWork()
                         sws_scale_frame(m_swsContext, m_swsFrame, m_frameHW);
                         m_swsFrame->pkt_dts = m_packet->dts;
                         m_swsFrame->pts = m_packet->pts;
-
-                        //m_condition.wait(lock, [this]() { return m_frameQue.size() < 100; });
+                        lockSeek.unlock();
+                        std::unique_lock<std::mutex> lock(*m_mutex);
+                        m_condition.wait(lock, [this]() { return m_frameQue.size() < 100; });
 
                         m_frameQue.enqueue(m_swsFrame);
-                        m_isSeek = false;
-
                     }
-                    //std::this_thread::sleep_for(std::chrono::milliseconds(30));
                 }
             }
         } else {

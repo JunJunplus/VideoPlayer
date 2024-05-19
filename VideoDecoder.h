@@ -8,6 +8,7 @@
 #include <QQueue>
 #include <mutex>
 #include <condition_variable>
+#include <QThread>
 
 extern "C" {
 #include "libavutil/avutil.h"
@@ -32,6 +33,7 @@ public:
     qint64 GetCurStamp(AVFrame* frame);
     void InitHWDecoder(const AVCodec* codec);
     bool FrameDataCopy();
+    double GetFps();
 public slots:
     void Seek(qint64 time);
 private:
@@ -50,6 +52,7 @@ private:
     AVFrame* m_swsFrame = nullptr;
     AVPacket* m_curPacket = nullptr;
     AVFrame* m_curFrame = nullptr;
+    double m_fps = 0.0;
     uint8_t* m_outBuffer;
     QList<int> m_HWDeviceTypes;
     AVBufferRef* hw_device_ctx = nullptr;         // 对数据缓冲区的引用
@@ -63,6 +66,8 @@ private:
     std::mutex m_seekMutex;
     std::condition_variable m_condition;
     std::unique_lock<std::mutex> m_lock;
+
+    QThread m_qthread;
     bool m_isEnd = false;
     qint64 m_total = 0;
     bool m_isSeek = false;

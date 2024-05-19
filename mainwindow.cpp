@@ -51,7 +51,10 @@ void MainWindow::dropEvent(QDropEvent *event)
     connect(m_timer, &QTimer::timeout, this, &MainWindow::onPlay);
     m_timer->stop();
     m_video->openVideo(m_filePath);
-    m_timer->setInterval(15);
+    double fps = m_video->GetFps();
+    int timesp = static_cast<int>(1000.0f / fps);
+    qDebug() << "time-- " << fps;
+    m_timer->setInterval(timesp);
     m_timer->start();
 
     m_slider = new Slider(this);
@@ -77,7 +80,6 @@ void MainWindow::onPlay()
     AVFrame* frame = m_video->PopFrame();
 
     if (frame) {
-        qDebug() << "pop";
         m_slider->Setcurrent(m_video->GetCurStamp(frame));
         m_videoShow->UpdataTexture(frame);
         av_frame_unref(frame);
