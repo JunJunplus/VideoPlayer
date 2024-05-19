@@ -1,12 +1,39 @@
 # VideoPlayer
 
 #### 介绍
-{**以下是 Gitee 平台说明，您可以替换此简介**
-Gitee 是 OSCHINA 推出的基于 Git 的代码托管平台（同时支持 SVN）。专为开发者提供稳定、高效、安全的云端软件开发协作平台
-无论是个人、团队、或是企业，都能够用 Gitee 实现代码托管、项目管理、协作开发。企业项目请看 [https://gitee.com/enterprises](https://gitee.com/enterprises)}
+VideoPlayer是FFmpeg+Qt开发的播放器Demo，主要用于学习音视频，记录学习情况
 
 #### 软件架构
-软件架构说明
+
+已完成：
+
+1.硬解码
+
+2.GPU渲染视频帧
+
+3.输出为YUV420P格式渲染
+
+4.非精准Seek
+
+待完成：
+
+1.NV12格式渲染
+
+2.精准的Seek
+
+3.滑动条预览视频帧
+
+4.倍速播放
+
+5.快进、快退
+
+6.播放列表，切换播放视频文件
+
+7.网络流视频播放
+
+8.动画效果、美化UI
+
+9.qml、widget双界面，页面和逻辑分离
 
 
 #### 安装教程
@@ -17,9 +44,9 @@ Gitee 是 OSCHINA 推出的基于 Git 的代码托管平台（同时支持 SVN�
 
 #### 使用说明
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+1.  ffmpeg 6.0
+2.  qt5.15.2
+3.  CMake添加ffmpeg路径即可
 
 #### 参与贡献
 
@@ -31,9 +58,3 @@ Gitee 是 OSCHINA 推出的基于 Git 的代码托管平台（同时支持 SVN�
 
 #### 特技
 
-1.  使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
-2.  Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
-3.  你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
-4.  [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
-5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
