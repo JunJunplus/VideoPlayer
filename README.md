@@ -17,7 +17,7 @@ VideoPlayer是FFmpeg+Qt开发的播放器Demo，主要用于学习音视频，�
 
 待完成：
 
-1.NV12格式渲染
+1.NV12格式渲染，h265+10bit格式支持
 
 2.精准的Seek
 
