@@ -37,6 +37,7 @@ private:
     QOpenGLTexture* m_Utexture{nullptr};
     QOpenGLTexture* m_Vtexture{nullptr};
     QSize m_size;
+    bool m_isFirst = true;
 };
 
 #endif // VIDEOSHOW_H

@@ -91,7 +91,8 @@ void VideoDecoder::openVideo(const QString &path)
     }
 
     m_stream = m_formatContext->streams[ret];
-    m_codec = const_cast<AVCodec*>(avcodec_find_decoder(m_stream->codecpar->codec_id));
+    //m_codec = const_cast<AVCodec*>(avcodec_find_decoder(m_stream->codecpar->codec_id));
+    m_codec = const_cast<AVCodec*>(avcodec_find_decoder_by_name("h264_qsv"));
     if (m_codec == nullptr) {
         qDebug() << "avcodec_find_decoder failed";
     } else {
@@ -108,14 +109,14 @@ void VideoDecoder::openVideo(const QString &path)
     m_codecContext->flags2 |= AV_CODEC_FLAG2_FAST;    // 允许不符合规范的加速技巧。
     m_codecContext->thread_count = 8;                 // 使用8线程解码
 
-    InitHWDecoder(m_codec);
+    //InitHWDecoder(m_codec);
     //5 打开解码器
     if (avcodec_open2(m_codecContext, nullptr, nullptr) != 0) {
         qDebug() << "avcodec_open2 failed";
     } else {
         qDebug() << "avcodec_open2 successed";
     }
-
+    qDebug() << "解码器： " << m_codecContext->codec->long_name;
     //6 获取格式上下文
 
     //解码的状态类型(0:表示解码完毕，非0:表示正在解码)
@@ -365,24 +366,24 @@ void VideoDecoder::doWork()
 
                         av_frame_unref(m_frameHW);
 
-                        if(!m_frame->data[0])               // 如果是硬件解码就进入
-                        {
-                            FrameDataCopy();
-                        }
+                        // if(!m_frame->data[0])               // 如果是硬件解码就进入
+                        // {
+                        //     FrameDataCopy();
+                        // }
 
                         m_swsFrame = av_frame_alloc();
                         static bool isSw = true;
                         if (isSw)
 
-                        m_swsContext = sws_getContext(m_frameHW->width,
-                                                      m_frameHW->height,
-                                                      AV_PIX_FMT_NV12,
-                                                      m_frameHW->width,
-                                                      m_frameHW->width,
-                                                      AV_PIX_FMT_YUV420P,
-                                                      SWS_BILINEAR, NULL,NULL,NULL);
+                        // m_swsContext = sws_getContext(m_frameHW->width,
+                        //                               m_frameHW->height,
+                        //                               AV_PIX_FMT_NV12,
+                        //                               m_frameHW->width,
+                        //                               m_frameHW->width,
+                        //                               AV_PIX_FMT_YUV420P,
+                        //                               SWS_BILINEAR, NULL,NULL,NULL);
                         isSw = false;
-                        sws_scale_frame(m_swsContext, m_swsFrame, m_frameHW);
+                        sws_scale_frame(m_swsContext, m_swsFrame, m_frame);
                         m_swsFrame->pkt_dts = m_packet->dts;
                         m_swsFrame->pts = m_packet->pts;
                         lockSeek.unlock();

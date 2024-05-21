@@ -22,24 +22,6 @@ void VideoShow::initializeGL()
     m_shaderProgram->addShader(m_vertShader);
     m_shaderProgram->addShader(m_fragShader);
     m_shaderProgram->link();
-    //m_shaderProgram->bind();
-    m_Ytexture = new QOpenGLTexture(QOpenGLTexture::Target::Target2D);
-    m_Ytexture->setFormat(QOpenGLTexture::R8_UNorm);
-    //m_Ytexture->setMinificationFilter(QOpenGLTexture::Nearest);
-    m_Ytexture->setMinMagFilters(QOpenGLTexture::LinearMipMapLinear,QOpenGLTexture::Linear);
-    m_Ytexture->setWrapMode(QOpenGLTexture::ClampToEdge);
-
-    m_Utexture = new QOpenGLTexture(QOpenGLTexture::Target::Target2D);
-    m_Utexture->setFormat(QOpenGLTexture::R8_UNorm);
-    //m_Utexture->setMinificationFilter(QOpenGLTexture::Nearest);
-    m_Utexture->setMinMagFilters(QOpenGLTexture::LinearMipMapLinear,QOpenGLTexture::Linear);
-    m_Utexture->setWrapMode(QOpenGLTexture::ClampToEdge);
-
-    m_Vtexture = new QOpenGLTexture(QOpenGLTexture::Target::Target2D);
-    m_Vtexture->setFormat(QOpenGLTexture::R8_UNorm);
-    //m_Vtexture->setMinificationFilter(QOpenGLTexture::Nearest);
-    m_Vtexture->setMinMagFilters(QOpenGLTexture::LinearMipMapLinear,QOpenGLTexture::Linear);
-    m_Vtexture->setWrapMode(QOpenGLTexture::ClampToEdge);
 
     float quadVertices[] = {
         // positions   // texCoords
@@ -89,7 +71,9 @@ void VideoShow::paintGL()
     //m_fbo->bind();
     glClear(GL_COLOR_BUFFER_BIT);
     glClearColor(0, 0.0, 0.0, 1);
-
+    if (m_isFirst) {
+        return;
+    }
     m_vao.bind();
     m_shaderProgram->bind();
     glActiveTexture(GL_TEXTURE0);
@@ -156,15 +140,26 @@ void VideoShow::resizeGL(int w, int h)
 
 void VideoShow::UpdataTexture(AVFrame *frame)
 {
-    static bool first = true;
-    if (first) {
+    if (m_isFirst) {
+        m_Ytexture = new QOpenGLTexture(QOpenGLTexture::Target::Target2D);
         m_Ytexture->setSize(frame->width, frame->height);
-        m_Ytexture->allocateStorage(QOpenGLTexture::Red,QOpenGLTexture::UInt8);
+        m_Ytexture->setMinMagFilters(QOpenGLTexture::LinearMipMapLinear,QOpenGLTexture::Linear);
+        m_Ytexture->setFormat(QOpenGLTexture::R8_UNorm);
+        m_Ytexture->allocateStorage();
+
+        m_Utexture = new QOpenGLTexture(QOpenGLTexture::Target::Target2D);
         m_Utexture->setSize(frame->width / 2, frame->height / 2);
-        m_Utexture->allocateStorage(QOpenGLTexture::Red,QOpenGLTexture::UInt8);
+        m_Utexture->setMinMagFilters(QOpenGLTexture::LinearMipMapLinear,QOpenGLTexture::Linear);
+        m_Utexture->setFormat(QOpenGLTexture::R8_UNorm);
+        m_Utexture->allocateStorage();
+
+        m_Vtexture = new QOpenGLTexture(QOpenGLTexture::Target::Target2D);
         m_Vtexture->setSize(frame->width / 2, frame->height / 2);
-        m_Vtexture->allocateStorage(QOpenGLTexture::Red,QOpenGLTexture::UInt8);
-        first = false;
+        m_Vtexture->setMinMagFilters(QOpenGLTexture::LinearMipMapLinear,QOpenGLTexture::Linear);
+        m_Vtexture->setFormat(QOpenGLTexture::R8_UNorm);
+        m_Vtexture->allocateStorage();
+        m_isFirst = false;
+        resizeGL(this->width(), this->height());
     }
 
     QOpenGLPixelTransferOptions options;
