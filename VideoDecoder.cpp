@@ -91,8 +91,8 @@ void VideoDecoder::openVideo(const QString &path)
     }
 
     m_stream = m_formatContext->streams[ret];
-    //m_codec = const_cast<AVCodec*>(avcodec_find_decoder(m_stream->codecpar->codec_id));
-    m_codec = const_cast<AVCodec*>(avcodec_find_decoder_by_name("h264_qsv"));
+    m_codec = const_cast<AVCodec*>(avcodec_find_decoder(m_stream->codecpar->codec_id));
+    //m_codec = const_cast<AVCodec*>(avcodec_find_decoder_by_name("h264_qsv"));
     if (m_codec == nullptr) {
         qDebug() << "avcodec_find_decoder failed";
     } else {
@@ -109,7 +109,7 @@ void VideoDecoder::openVideo(const QString &path)
     m_codecContext->flags2 |= AV_CODEC_FLAG2_FAST;    // 允许不符合规范的加速技巧。
     m_codecContext->thread_count = 8;                 // 使用8线程解码
 
-    //InitHWDecoder(m_codec);
+    InitHWDecoder(m_codec);
     //5 打开解码器
     if (avcodec_open2(m_codecContext, nullptr, nullptr) != 0) {
         qDebug() << "avcodec_open2 failed";
@@ -215,7 +215,7 @@ AVFrame *VideoDecoder::PopFrame()
     if (!m_frameQue.isEmpty()) {
         return m_frameQue.dequeue();
     } else {
-        m_condition.notify_one();
+        m_queCondition.notify_one();
         return nullptr;
     }
     return nullptr;
@@ -323,6 +323,7 @@ double VideoDecoder::GetFps()
 {
     return m_fps;
 }
+
 void VideoDecoder::Seek(qint64 time)
 {
     qDebug() << "Seek : " << time;
@@ -343,7 +344,7 @@ void VideoDecoder::Seek(qint64 time)
 
     m_isSeek = false;
     }
-    m_condition.notify_all();
+    m_seekCondition.notify_one();
 }
 
 void VideoDecoder::doWork()
@@ -351,7 +352,7 @@ void VideoDecoder::doWork()
     while (true) {
         std::unique_lock<std::mutex> lockSeek(m_seekMutex);
 
-        m_condition.wait(lockSeek, [this](){ return !m_isSeek;});
+        m_seekCondition.wait(lockSeek, [this](){ return !m_isSeek;});
 
         int ret = av_read_frame(m_formatContext, m_packet);
         if (ret >= 0) {
@@ -364,14 +365,12 @@ void VideoDecoder::doWork()
                         //     continue;
                         // }
 
-                        av_frame_unref(m_frameHW);
+                        //av_frame_unref(m_frameHW);
+                        m_frameHW = av_frame_alloc();
+                        FrameDataCopy();
 
-                        // if(!m_frame->data[0])               // 如果是硬件解码就进入
-                        // {
-                        //     FrameDataCopy();
-                        // }
 
-                        m_swsFrame = av_frame_alloc();
+
                         static bool isSw = true;
                         if (isSw)
 
@@ -383,20 +382,21 @@ void VideoDecoder::doWork()
                         //                               AV_PIX_FMT_YUV420P,
                         //                               SWS_BILINEAR, NULL,NULL,NULL);
                         isSw = false;
-                        sws_scale_frame(m_swsContext, m_swsFrame, m_frame);
-                        m_swsFrame->pkt_dts = m_packet->dts;
-                        m_swsFrame->pts = m_packet->pts;
+                        //m_swsFrame = av_frame_alloc();
+                        //sws_scale_frame(m_swsContext, m_swsFrame, m_frameHW);
+                        // m_frameHW->pkt_dts = m_packet->dts;
+                        // m_frameHW->pts = m_packet->pts;
                         lockSeek.unlock();
                         std::unique_lock<std::mutex> lock(*m_mutex);
-                        m_condition.wait(lock, [this]() { return m_frameQue.size() < 100; });
+                        m_queCondition.wait(lock, [this]() { return m_frameQue.size() < 10; });
 
-                        m_frameQue.enqueue(m_swsFrame);
+                        m_frameQue.enqueue(m_frameHW);
                     }
                 }
             }
         } else {
             std::unique_lock<std::mutex> lock(*m_mutex);
-            m_condition.wait(lock);
+            //m_condition.wait(lock);
         }
     }
 }

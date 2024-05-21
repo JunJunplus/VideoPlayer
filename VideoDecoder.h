@@ -64,7 +64,8 @@ private:
     std::thread* m_thread;
     std::mutex* m_mutex;
     std::mutex m_seekMutex;
-    std::condition_variable m_condition;
+    std::condition_variable m_seekCondition;
+    std::condition_variable m_queCondition;
     std::unique_lock<std::mutex> m_lock;
 
     QThread m_qthread;
